@@ -11,29 +11,31 @@ from datetime import datetime, timedelta
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 import hashlib
+import plotly.express as px
+#import plotly.graph_objects as go
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
 
 # Layout of the app
-app.layout = html.Div([
+app.layout = dbc.Container([
     dcc.Interval(
         id='interval-component',
         interval=5*60*1000,  # 5 mins in milliseconds
         n_intervals=0
     ),
-    html.H1("Bovada odds table", style={'textAlign': 'center'}),
-    dbc.Row(
-        [
+    dbc.Row([html.H1("Bovada odds table", style={'textAlign': 'center'})],
+        className='header-bar'),
+    dbc.Row([
         dash_table.DataTable(id='data-table',
             tooltip_data=[],
             style_data={'color': 'black', 'backgroundColor': 'white', 'justify': 'center'},
             style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': 'rgb(220, 220, 220)',}],
             style_header={'backgroundColor': 'rgb(210, 210, 210)', 'color': 'black', 'fontWeight': 'bold'}
             )
-        ],
+        ], className="data-table"),
+    dbc.Row(dcc.Graph(id='line-graph'),
         justify="center",  # This centers the Row contents
-        className="p-5"  # Adds padding; you can adjust the number (1-5) for different padding sizes
-    )
+        className="line-graph")
 ])
 
 def generate_game_id(row):
@@ -158,12 +160,60 @@ def get_data():
 
     # Log the new data if it's different from the last entry
     if log_new_data:
-        log_entry = {"datetime": datetime.now().isoformat(), "data": current_df[["game_id", "Home Win", "Away Win", "points"]].to_dict()}
+        log_entry = {"datetime": datetime.now().isoformat(), "data": current_df[["game_id", "home", "away", "Home Win", "Away Win", "points"]].to_dict()}
         with open("data_log.jsonl", "a") as f:
             json.dump(log_entry, f)
             f.write("\n")
 
     return current_df
+
+def load_historical_data():
+    plot_data = []
+    with open('data_log.jsonl', 'r') as file:
+        for line in file:
+            entry = json.loads(line)
+            datetime = entry['datetime']
+            data = entry['data']
+            for index, game_id in data['game_id'].items():
+                home_team = data['home'][index]
+                away_team = data['away'][index]
+                plot_data.append({
+                    'DateTime': datetime,
+                    'Team': home_team,
+                    'Win': data['Home Win'][index],
+                    'Type': 'Home Win'
+                })
+                plot_data.append({
+                    'DateTime': datetime,
+                    'Team': away_team,
+                    'Win': data['Away Win'][index],
+                    'Type': 'Away Win'
+                })
+    return pd.DataFrame(plot_data)
+
+#stashing
+# def generate_line_graph(df):
+#     fig = go.Figure()
+
+#     # Adding Home Win lines
+#     for game_id in df['Game ID'].unique():
+#         game_data = df[df['Game ID'] == game_id]
+#         print(game_data)
+#         fig.add_trace(go.Scatter(x=game_data['DateTime'], y=game_data['Home Win'], mode='lines', name=f'Home Win - {game_id}'))
+
+#     # Adding Away Win lines
+#     for game_id in df['Game ID'].unique():
+#         game_data = df[df['Game ID'] == game_id]
+#         fig.add_trace(go.Scatter(x=game_data['DateTime'], y=game_data['Away Win'], mode='lines', name=f'Away Win - {game_id}'))
+
+#     fig.update_layout(title='Winning Points Over Time', xaxis_title='DateTime', yaxis_title='Winning Points')
+#     return fig
+
+def generate_line_graph(df):
+    fig = px.line(df, x='DateTime', y='Win', color='Team', line_group='Team', 
+                  labels={'Win': 'Winning Points', 'DateTime': 'DateTime', 'Team': 'Team'},
+                  title='Winning Points Over Time', range_y=[550, -550])
+    return fig
 
 @app.callback(
     Output('data-table', 'data'),
@@ -177,7 +227,7 @@ def update_table(n):
     # Read the log file to get historical data and create a mapping
     historical_data = {}
 
-    with open("data_log.json", "r") as f:
+    with open("data_log.jsonl", "r") as f:
         for line in f:
             entry = json.loads(line)
             data = entry['data']
@@ -203,6 +253,63 @@ def update_table(n):
 
     # Update the data and tooltips for the table
     return df.to_dict('records'), tooltip_data
+
+@app.callback(
+    Output('line-graph', 'figure'),
+    Input('interval-component', 'n_intervals')
+)
+def update_graph(n):
+    historical_data = load_historical_data()  # Reload historical data
+    #if fails data_log empty
+    try:
+        fig = generate_line_graph(historical_data)
+        return fig
+    except:
+        # Define coordinates for the letter 'N'
+        data = pd.DataFrame([
+            {"letter": 'N', "x": 0, "y":0},
+            {"letter": 'N', "x": 0, "y":1},
+            {"letter": 'N', "x": 0, "y":2},
+            {"letter": 'N', "x": 0, "y":3},
+            {"letter": 'N', "x": 1, "y":2},
+            {"letter": 'N', "x": 2, "y":1},
+            {"letter": 'N', "x": 3, "y":0},
+            {"letter": 'N', "x": 3, "y":1},
+            {"letter": 'N', "x": 3, "y":2},
+            {"letter": 'N', "x": 3, "y":3},
+            #O
+            {"letter": 'O', "x": 5, "y":0},
+            {"letter": 'O', "x": 4, "y":1.5},
+            {"letter": 'O', "x": 5, "y":3},
+            {"letter": 'O', "x": 6, "y":1.5},
+            {"letter": 'O', "x": 5, "y":0},
+            #D
+            {"letter": 'D', "x": 8, "y":0},
+            {"letter": 'D', "x": 8, "y":3},
+            {"letter": 'D', "x": 9, "y":1.5},
+            {"letter": 'D', "x": 8, "y":0},
+            #A
+            {"letter": 'A', "x": 10, "y":0},
+            {"letter": 'A', "x": 11, "y":3},
+            {"letter": 'A', "x": 12, "y":0},
+            {"letter": 'A1', "x": 10.5, "y":1.5},
+            {"letter": 'A1', "x": 11.5, "y":1.5},
+            #T
+            {"letter": 'T', "x": 14, "y":0},
+            {"letter": 'T', "x": 14, "y":3},
+            {"letter": 'T', "x": 12.5, "y":3},
+            {"letter": 'T', "x": 15.5, "y":3},
+            #A
+            {"letter": 'A2', "x": 16, "y":0},
+            {"letter": 'A2', "x": 17, "y":3},
+            {"letter": 'A2', "x": 18, "y":0},
+            {"letter": 'A3', "x": 16.5, "y":1.5},
+            {"letter": 'A3', "x": 17.5, "y":1.5},
+        ])
+
+        # Create the line plot
+        return px.line(data, color='letter', x='x', y='y', line_shape='linear')
+
 
 # Run the app
 if __name__ == '__main__':
