@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 from selenium.webdriver.chrome.options import Options
 import hashlib
 import plotly.express as px
+import logging
+
+logging.basicConfig(format='%(asctime)s [%(levelname)s] - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
 
@@ -158,6 +162,7 @@ def get_data():
 
     # Log the new data if it's different from the last entry
     if log_new_data:
+        logger.info(f"added data to logs")
         log_entry = {"datetime": datetime.now().isoformat(), "data": current_df[["game_id", "home", "away", "Home Win", "Away Win", "points"]].to_dict()}
         with open("data_log.jsonl", "a") as f:
             json.dump(log_entry, f)
@@ -232,6 +237,7 @@ def update_table(n):
         tooltip_data.append(row_tooltip)
 
     # Update the data and tooltips for the table
+    logger.info(f"Table updated")
     return df.to_dict('records'), tooltip_data
 
 @app.callback(
@@ -242,6 +248,7 @@ def update_graph(n):
     historical_data = load_historical_data()  # Reload historical data
     #if fails data_log empty
     try:
+        logger.info(f"Graph updated")
         fig = generate_line_graph(historical_data)
         return fig
     except:
