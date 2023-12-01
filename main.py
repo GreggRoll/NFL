@@ -46,14 +46,17 @@ def generate_game_id(row):
     return hashlib.md5(identifier.encode()).hexdigest()
 # Function to convert the betting odds to integers while handling the signs
 def convert_to_int(value):
-    if value == 'EVEN':
-        return 0
-    if value.startswith('+'):
-        return int(value[1:])
-    elif value.startswith('-'):
-        return int(value)
-    else:
-        return int(value)
+    try:
+        if value == 'EVEN':
+            return 0
+        if value.startswith('+'):
+            return int(value[1:])
+        elif value.startswith('-'):
+            return int(value)
+        else:
+            return int(value)
+    except:
+        return -1
     
 def concat_values(x, y, z=None):
     if z:
