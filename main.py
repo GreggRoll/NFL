@@ -9,10 +9,8 @@ from bs4 import BeautifulSoup
 import time
 from datetime import datetime, timedelta
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 import hashlib
 import plotly.express as px
-#import plotly.graph_objects as go
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
 
@@ -190,24 +188,6 @@ def load_historical_data():
                     'Type': 'Away Win'
                 })
     return pd.DataFrame(plot_data)
-
-#stashing
-# def generate_line_graph(df):
-#     fig = go.Figure()
-
-#     # Adding Home Win lines
-#     for game_id in df['Game ID'].unique():
-#         game_data = df[df['Game ID'] == game_id]
-#         print(game_data)
-#         fig.add_trace(go.Scatter(x=game_data['DateTime'], y=game_data['Home Win'], mode='lines', name=f'Home Win - {game_id}'))
-
-#     # Adding Away Win lines
-#     for game_id in df['Game ID'].unique():
-#         game_data = df[df['Game ID'] == game_id]
-#         fig.add_trace(go.Scatter(x=game_data['DateTime'], y=game_data['Away Win'], mode='lines', name=f'Away Win - {game_id}'))
-
-#     fig.update_layout(title='Winning Points Over Time', xaxis_title='DateTime', yaxis_title='Winning Points')
-#     return fig
 
 def generate_line_graph(df):
     fig = px.line(df, x='DateTime', y='Win', color='Team', line_group='Team', 

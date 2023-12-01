@@ -13,6 +13,7 @@ data is recorded to history (data_log.jsonl) every 5 mins while the script runs
 history is presented in tooltip and via line graph
 
 ## steps:
+- `pip install requirements.txt`
 - `run main.py`
 - navigate to `http://localhost:8050`
 
