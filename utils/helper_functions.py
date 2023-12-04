@@ -1,49 +1,23 @@
-import dash
-from dash import html, dcc, Input, Output, dash_table
-import dash_bootstrap_components as dbc
+from logger import setup_logger
 import pandas as pd
 import json
-from datetime import datetime
-from selenium import webdriver
-from bs4 import BeautifulSoup
-import time
-from datetime import datetime, timedelta
-from selenium.webdriver.chrome.options import Options
-import hashlib
 import plotly.express as px
-import logging
+import hashlib
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+import time
 
-logging.basicConfig(format='%(asctime)s [%(levelname)s] - %(message)s', level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.CYBORG])
-
-# Layout of the app
-app.layout = dbc.Container([
-    dcc.Interval(
-        id='interval-component',
-        interval=5*60*1000,  # 5 mins in milliseconds
-        n_intervals=0
-    ),
-    dbc.Row([html.H1("Bovada odds table", style={'textAlign': 'center'})],
-        className='header-bar'),
-    dbc.Row([
-        dash_table.DataTable(id='data-table',
-            tooltip_data=[],
-            style_data={'color': 'black', 'backgroundColor': 'white', 'justify': 'center'},
-            style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': 'rgb(220, 220, 220)',}],
-            style_header={'backgroundColor': 'rgb(210, 210, 210)', 'color': 'black', 'fontWeight': 'bold'}
-            )
-        ], className="data-table"),
-    dbc.Row(dcc.Graph(id='line-graph'),
-        justify="center",  # This centers the Row contents
-        className="line-graph")
-])
+logger = setup_logger(__name__)
 
 def generate_game_id(row):
-    # Example: Use a combination of date, home team, and away team to generate a unique ID
-    identifier = f"{row['date']}_{row['home']}_{row['away']}"
-    return hashlib.md5(identifier.encode()).hexdigest()
+    try:
+        # Example: Use a combination of date, home team, and away team to generate a unique ID
+        identifier = f"{row['date']}_{row['home']}_{row['away']}"
+        return hashlib.md5(identifier.encode()).hexdigest()
+    except Exception as e:
+        logger.exception("Generate Game error")
 # Function to convert the betting odds to integers while handling the signs
 def convert_to_int(value):
     try:
@@ -55,7 +29,8 @@ def convert_to_int(value):
             return int(value)
         else:
             return int(value)
-    except:
+    except Exception as e:
+        logger.exception("Convert to int error")
         return -1
     
 def concat_values(x, y, z=None):
@@ -94,7 +69,8 @@ def get_data():
             item = str(game).split('>')
             info = [x.split('<')[0].strip() for x in item if not x.startswith("<")]
             data.append(info)
-        except:
+        except Exception as e:
+            logger.exception("get data section error")
             pass
 
     df = pd.DataFrame(data)
@@ -142,7 +118,8 @@ def get_data():
 
     current_df = df.sort_values('points', ascending=False)
     current_df["game_id"] = current_df.apply(generate_game_id, axis=1)
-    #current_df = current_df["date", "time", "bets", "home", "away", "points", "Home Win", "Away Win", "Home Spread", "Away Spread", "Total Over", "Total Under" , "game_id"]
+    current_df = current_df[['date', 'time', 'bets', 'home', 'away', 'points', 'Home Win', 'Away Win', 'Home Spread', 'Away Spread', 'Total Over', 'Total Under', 'game_id']]
+                           
     # Initialize a flag to indicate whether to log the new data
     log_new_data = False
 
@@ -161,6 +138,7 @@ def get_data():
                 log_new_data = True
     except FileNotFoundError:
         # If file doesn't exist, create it and log the new data
+        logger.exception("log read error")
         log_new_data = True
 
     # Log the new data if it's different from the last entry
@@ -202,105 +180,3 @@ def generate_line_graph(df):
                   labels={'Win': 'Winning Points', 'DateTime': 'DateTime', 'Team': 'Team'},
                   title='Winning Points Over Time', range_y=[550, -550])
     return fig
-
-@app.callback(
-    Output('data-table', 'data'),
-    Output('data-table', 'tooltip_data'),
-    Input('interval-component', 'n_intervals')
-)
-def update_table(n):
-    # Fetch the latest data
-    df = get_data()
-
-    # Read the log file to get historical data and create a mapping
-    historical_data = {}
-
-    with open("data_log.jsonl", "r") as f:
-        for line in f:
-            entry = json.loads(line)
-            data = entry['data']
-            for index, game_id in data['game_id'].items():
-                if game_id not in historical_data:
-                    historical_data[game_id] = {'Home Win': [], 'Away Win': [], 'points': []}
-
-                # Append historical values for this game_id
-                historical_data[game_id]['Home Win'].append(data['Home Win'][index])
-                historical_data[game_id]['Away Win'].append(data['Away Win'][index])
-                historical_data[game_id]['points'].append(data['points'][index])
-
-    # Prepare tooltip data
-    tooltip_data = []
-    for index, row in df.iterrows():
-        game_id = row['game_id']
-        hist_values = historical_data.get(game_id, {})
-        row_tooltip = {
-            col: f"{col}: {str(row[col])}\nHistory: {', '.join(map(str, hist_values.get(col, ['N/A'])))}"
-            for col in df.columns if col in ['Home Win', 'Away Win', 'points']
-        }
-        tooltip_data.append(row_tooltip)
-
-    # Update the data and tooltips for the table
-    logger.info(f"Table updated")
-    return df.to_dict('records'), tooltip_data
-
-@app.callback(
-    Output('line-graph', 'figure'),
-    Input('interval-component', 'n_intervals')
-)
-def update_graph(n):
-    historical_data = load_historical_data()  # Reload historical data
-    #if fails data_log empty
-    try:
-        logger.info(f"Graph updated")
-        fig = generate_line_graph(historical_data)
-        return fig
-    except:
-        # Define coordinates for the letter 'N'
-        data = pd.DataFrame([
-            {"letter": 'N', "x": 0, "y":0},
-            {"letter": 'N', "x": 0, "y":1},
-            {"letter": 'N', "x": 0, "y":2},
-            {"letter": 'N', "x": 0, "y":3},
-            {"letter": 'N', "x": 1, "y":2},
-            {"letter": 'N', "x": 2, "y":1},
-            {"letter": 'N', "x": 3, "y":0},
-            {"letter": 'N', "x": 3, "y":1},
-            {"letter": 'N', "x": 3, "y":2},
-            {"letter": 'N', "x": 3, "y":3},
-            #O
-            {"letter": 'O', "x": 5, "y":0},
-            {"letter": 'O', "x": 4, "y":1.5},
-            {"letter": 'O', "x": 5, "y":3},
-            {"letter": 'O', "x": 6, "y":1.5},
-            {"letter": 'O', "x": 5, "y":0},
-            #D
-            {"letter": 'D', "x": 8, "y":0},
-            {"letter": 'D', "x": 8, "y":3},
-            {"letter": 'D', "x": 9, "y":1.5},
-            {"letter": 'D', "x": 8, "y":0},
-            #A
-            {"letter": 'A', "x": 10, "y":0},
-            {"letter": 'A', "x": 11, "y":3},
-            {"letter": 'A', "x": 12, "y":0},
-            {"letter": 'A1', "x": 10.5, "y":1.5},
-            {"letter": 'A1', "x": 11.5, "y":1.5},
-            #T
-            {"letter": 'T', "x": 14, "y":0},
-            {"letter": 'T', "x": 14, "y":3},
-            {"letter": 'T', "x": 12.5, "y":3},
-            {"letter": 'T', "x": 15.5, "y":3},
-            #A
-            {"letter": 'A2', "x": 16, "y":0},
-            {"letter": 'A2', "x": 17, "y":3},
-            {"letter": 'A2', "x": 18, "y":0},
-            {"letter": 'A3', "x": 16.5, "y":1.5},
-            {"letter": 'A3', "x": 17.5, "y":1.5},
-        ])
-
-        # Create the line plot
-        return px.line(data, color='letter', x='x', y='y', line_shape='linear')
-
-
-# Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
