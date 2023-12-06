@@ -124,7 +124,7 @@ def get_data(start_date, end_date):
     #remove plus from bets
     df['bets'] = df['bets'].apply(lambda x: x[2:])
     #filter data for date
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.date
     df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
     #create day of the week column
     df["day"] = df['date'].dt.strftime('%A')
