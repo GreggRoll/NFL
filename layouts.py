@@ -5,16 +5,20 @@ from datetime import datetime, timedelta
 
 today = datetime.now()
 weekday = today.weekday()  # Monday is 0 and Sunday is 6
-if weekday == 1:  # If today is Tuesday
-    start_date = today
-else:
-    days_since_tuesday = (weekday - 1) % 7
-    start_date = today - timedelta(days=days_since_tuesday)
-if weekday == 0:  # If today is Monday
+
+# Calculate the start date (Tuesday)
+if weekday >= 1:  # If today is Tuesday or after
+    start_date = today - timedelta(days=(weekday - 1))
+else:  # If today is before Tuesday
+    start_date = today - timedelta(days=(weekday + 6))
+
+# Calculate the end date (Monday)
+if weekday <= 0:  # If today is Monday
     end_date = today
-else:
-    days_until_monday = (7 - weekday) % 7
-    end_date = today + timedelta(days=days_until_monday)
+else:  # If today is after Monday
+    end_date = today + timedelta(days=(7 - weekday))
+
+# Convert datetime to date
 start_date = start_date.date()
 end_date = end_date.date()
 
