@@ -14,7 +14,7 @@ history is presented in tooltip and via line graph
 
 ## steps:
 - `pip install requirements.txt`
-- `run main.py`
+- `run index.py`
 - navigate to `http://localhost:8050`
 
 ## todo:

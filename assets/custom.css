@@ -5,9 +5,67 @@ body {
     background-size: cover;
     background-position: center center;
 }
+.title {
+    padding: 10px;
+    justify-self: center;
+}
 .data-table {
     padding: 10px;
 }
 .line-graph {
     padding: 10px;
+}
+.datepicker {
+    display: flex; 
+    align-items: center;
+    justify-content: flex-end;
+}
+.footer {
+    background-color: #333;  /* Dark background */
+    color: white;            /* Light text */
+    padding: 10px;           /* Padding for spacing */
+    text-align: center;      /* Center-align text */
+}
+
+.footer-text {
+    margin-bottom: 10px;     /* Space between paragraphs */
+}
+
+.footer a {
+    color: #007bff;          /* Color for links */
+    text-decoration: none;   /* No underline */
+}
+
+.footer a:hover {
+    color: #0056b3;          /* Color for links on hover */
+}
+
+.chat-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    padding-right: 10px;
+}
+
+.chat-box {
+    height: 430px;  /* Fixed height */
+    overflow-y: scroll; /* Make it scrollable */
+    width: 100%;  /* Adjust as needed */
+}
+
+.chat-input-container {
+    display: flex;
+    width: 100%;
+    justify-content: center; /* Center align the input and button */
+}
+
+.chat-input {
+    color: black;
+    width: 80%;
+}
+
+.chat-send {
+    color: black;
+    width: 19%;
 }
