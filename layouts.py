@@ -44,7 +44,7 @@ chat_layout = html.Div([
     dcc.Interval(id='chat-interval', interval=5000, n_intervals=0),
     html.Div(id='chat-box', className='chat-box'),
     html.Div([
-        dcc.Input(id='chat-message', type='text', className='chat-input'),
+        dcc.Input(id='chat-message', type='text', n_submit=0, className='chat-input'),
         html.Button('Send', id='send-button', className='chat-send')
     ], className='chat-input-container'),  # Container for input and button
 ], className='chat-layout')

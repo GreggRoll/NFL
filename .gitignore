@@ -1,8 +1,6 @@
-.ipynb_checkpoints/Untitled-checkpoint.ipynb
-.ipynb_checkpoints/Untitled1-checkpoint.ipynb
-.ipynb_checkpoints/legacy-checkpoint.ipynb
+/__pycache__
+/.ipynb_checkpoints
+*.ipynb
+*.pyc
 app.log
 data_log.jsonl
-*.pyc
-live-chat.jsonl
-

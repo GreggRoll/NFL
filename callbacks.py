@@ -22,17 +22,21 @@ def update_chat(n):
 # Callback to send a new chat message
 @app.callback(
     Output('chat-message', 'value'),
-    Input('send-button', 'n_clicks'),
+    [Input('send-button', 'n_clicks'), Input('chat-message', 'n_submit')],
     State('chat-message', 'value'),
     prevent_initial_call=True
 )
-def send_message(n_clicks, message):
-    ip_address = request.remote_addr  # Get user IP address
-    username = get_username_by_ip(ip_address)
-    if not username:
-        username = generate_username(ip_address)
-    append_message_to_log(ip_address, username, message)
-    return ''  # Clear input field after sending message
+def send_message(n_clicks, n_submit, message):
+    if n_clicks or n_submit:
+        if message != ''.strip():
+            ip_address = request.remote_addr  # Get user IP address
+            username = get_username_by_ip(ip_address)
+            if not username:
+                username = generate_username(ip_address)
+            append_message_to_log(ip_address, username, message)
+            return ''  # Clear input field after sending message
+        return ''
+    return message
 
 @app.callback(
     Output('data-table', 'data'),

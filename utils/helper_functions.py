@@ -11,12 +11,9 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
 import random
-from helper_data import animals, colors, no_data
+from .helper_data import animals, colors, no_data
 
 logger = setup_logger(__name__)
-
-animals = ["Lion", "Tiger", "Bear", "Eagle", "Wolf"]
-colors = ["Red", "Blue", "Green", "Yellow", "Purple"]
 
 def get_username_by_ip(ip_address):
     try:
