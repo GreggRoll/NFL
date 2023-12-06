@@ -124,7 +124,7 @@ def get_data(start_date, end_date):
     #remove plus from bets
     df['bets'] = df['bets'].apply(lambda x: x[2:])
     #filter data for date
-    df["date"] = pd.to_datetime(df["date"], format="%m/%d/%y").dt.date
+    df["date"] = pd.to_datetime(df["date"])
     df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
     #create day of the week column
     df["day"] = df['date'].dt.strftime('%A')
@@ -220,9 +220,7 @@ def load_historical_data(start_date, end_date):
                 })
     df = pd.DataFrame(plot_data)
     df['DateTime'] = pd.to_datetime(df['DateTime'])
-    logger.info(start_date)
-    logger.info(end_date)
-    df = df[df['DateTime']>=start_date]
+    df = df[(df['DateTime']>=start_date)&(df['DateTime']<=end_date)]
     return df
 
 
