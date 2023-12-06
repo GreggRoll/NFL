@@ -124,7 +124,7 @@ def get_data(start_date, end_date):
     #remove plus from bets
     df['bets'] = df['bets'].apply(lambda x: x[2:])
     #filter data for date
-    df["date"] = pd.to_datetime(df["date"], format="%m/%d/%y")
+    df["date"] = pd.to_datetime(df["date"], format="%m/%d/%y").dt.date
     df = df[(df['date'] >= start_date) & (df['date'] <= end_date)]
     #create day of the week column
     df["day"] = df['date'].dt.strftime('%A')
@@ -181,7 +181,7 @@ def get_data(start_date, end_date):
 
     return current_df
 
-def load_historical_data():
+def load_historical_data(start_date, end_date):
     plot_data = []
     with open('data_log.jsonl', 'r') as file:
         for line in file:
@@ -219,13 +219,17 @@ def load_historical_data():
                     'points': away_points
                 })
     df = pd.DataFrame(plot_data)
+    df['DateTime'] = pd.to_datetime(df['DateTime'])
+    logger.info(start_date)
+    logger.info(end_date)
+    df = df[df['DateTime']>=start_date]
     return df
 
 
 def generate_picks_graph(df, start_date, end_date):
     try:
         df['DateTime'] = pd.to_datetime(df['DateTime'])
-        df = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date) & (df['points'] > 0)]
+        df = df[df['points'] > 0]
         # Create an empty figure
         fig = go.Figure()
 
@@ -267,35 +271,15 @@ def generate_picks_graph(df, start_date, end_date):
             legend_title="Teams",
             legend={'traceorder': 'normal'}
         )
-        fig
         return fig
     except Exception as e:
         logger.exception("ERROR generating picks graph")
         return plot_no_data()
 
-def generate_odds_graph(df, start_date, end_date):
-    try:
-        df['DateTime'] = pd.to_datetime(df['DateTime'])
-        df = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date)]
-        fig = px.line(df, x='DateTime', y='Win', color='Team', line_group='Team', 
-                    labels={'Win': 'Winning Points', 'DateTime': 'DateTime', 'Team': 'Team'},
-                    range_y=[550, -550])
-        fig.update_layout(
-            title=f'Odds for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}',
-            xaxis_title="Date Time",
-            yaxis_title="Straight Up Win Odds",
-            legend_title="Teams",
-            legend={'traceorder': 'normal'}
-        )
-        return fig
-    except Exception as e:
-        logger.exception("ERROR generating odds graph")
-        return plot_no_data()
-
 def generate_points_graph(df, start_date, end_date):
     try:
         df['DateTime'] = pd.to_datetime(df['DateTime'])
-        df = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date)]
+        # df = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date)]
         # Check if the required columns are present
         if not {'DateTime', 'points', 'Team', 'Type'}.issubset(df.columns):
             raise ValueError("Dataframe is missing one or more required columns.")
@@ -304,12 +288,13 @@ def generate_points_graph(df, start_date, end_date):
         # Sorting these entries by 'points'
         sorted_teams = latest_entries.sort_values(by='points', ascending=False)['Team']
         # Create the line chart
-        fig = px.line(df, x='DateTime', y='points', color='Team', line_group='Type', title=f'Points for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}')
+        fig = px.line(df, x='DateTime', y='points', color='Team', line_group='Type', 
+                      title=f'Points for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}')
         # Reordering the legend
         fig.update_layout(
-            title=f'Odds for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}',
+            title=f'Generated Points for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}',
             xaxis_title="Date Time",
-            yaxis_title="Straight Up Win Odds",
+            yaxis_title="Generated points",
             legend_title="Teams",
             legend={'traceorder': 'normal'}
             )
@@ -319,4 +304,28 @@ def generate_points_graph(df, start_date, end_date):
     except Exception as e:
         logger.exception("ERROR generating points graph")
         return plot_no_data()
+
+def generate_odds_graph(df, start_date, end_date):
+    try:
+        df['DateTime'] = pd.to_datetime(df['DateTime'])
+        # df = df[(df['DateTime'] >= start_date) & (df['DateTime'] <= end_date)]
+        latest_entries = df.sort_values(by='DateTime').groupby('Team').last().reset_index()
+        # Sorting these entries by 'points'
+        sorted_teams = latest_entries.sort_values(by='points', ascending=False)['Team']
+        fig = px.line(df, x='DateTime', y='Win', color='Team', line_group='Type',
+                    labels={'Win': 'Winning Points', 'DateTime': 'DateTime', 'Team': 'Team'},
+                    range_y=[df['Win'].max(), df['Win'].min()])
+        fig.update_layout(
+            title=f'Odds for {datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d")} - {datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d")}',
+            xaxis_title="Date Time",
+            yaxis_title="Straight Up Win Odds",
+            legend_title="Teams",
+            legend={'traceorder': 'normal'}
+        )
+        fig.data = tuple(sorted(fig.data, key=lambda trace: sorted_teams.tolist().index(trace.name)))
+        return fig
+    except Exception as e:
+        logger.exception("ERROR generating odds graph")
+        return plot_no_data()
+
 

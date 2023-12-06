@@ -109,12 +109,11 @@ def update_table(n, start_date, end_date):
     Input('date-picker-range', 'end_date')
 )
 def update_graphs(n, start_date, end_date):
-    historical_data = load_historical_data()
+    historical_data = load_historical_data(start_date, end_date)
     picks_fig = generate_picks_graph(historical_data, start_date, end_date)
-    logger.info(f"Points Graph updated")
+    logger.info(f"Picks Graph updated")
     points_fig = generate_points_graph(historical_data, start_date, end_date)
     logger.info(f"Points Graph updated")
-    historical_data = load_historical_data()  # Reload historical data
     odds_fig = generate_odds_graph(historical_data, start_date, end_date)
     logger.info(f"Odds Graph updated")
     return picks_fig, points_fig, odds_fig
