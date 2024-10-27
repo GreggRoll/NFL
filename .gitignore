@@ -4,3 +4,4 @@
 *.pyc
 app.log
 data_log.jsonl
+data-log.db

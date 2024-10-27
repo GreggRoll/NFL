@@ -2,11 +2,11 @@ from app import app
 from logger import setup_logger
 from dash import Output, Input, State, html
 from flask import request
-import json
+import sqlite3
 from itertools import groupby
 import pandas as pd
 import plotly.express as px
-from utils.helper_functions import get_username_by_ip, read_chat_log, append_message_to_log, generate_username, get_data, generate_odds_graph, load_historical_data, generate_points_graph, plot_no_data, generate_picks_graph
+from utils.helper_functions import get_username_by_ip, read_chat_log, append_message_to_log, generate_username, get_data, generate_odds_graph, load_historical_data, generate_points_graph, generate_matchups, plot_no_data, generate_picks_graph
 
 logger = setup_logger(__name__)
 
@@ -17,7 +17,7 @@ logger = setup_logger(__name__)
 )
 def update_chat(n):
     messages = read_chat_log()
-    return [html.Div(f"{msg['username']}: {msg['message']}", style={"color": msg['username'].split('-')[1]}) for msg in messages]
+    return [html.Div(f"{msg[2]}: {msg[3]}", style={"color": msg[2].split('-')[1]}) for msg in messages]
 
 # Callback to send a new chat message
 @app.callback(
@@ -39,48 +39,44 @@ def send_message(n_clicks, n_submit, message):
     return message
 
 @app.callback(
+    Output('picks-graph', 'figure'),
     Output('data-table', 'data'),
     Output('data-table', 'tooltip_data'),
+    Output('matchups-table', 'data'),
+    Output('lower-odds-points-graph', 'figure'),
+    Output('odds-graph', 'figure'),
     Input('interval-component', 'n_intervals'),
     Input('date-picker-range', 'start_date'),
     Input('date-picker-range', 'end_date')
 )
+def update_all(n, start_date, end_date):
+    #graphs and things
+    historical_data = load_historical_data(start_date, end_date)
+    picks_fig = generate_picks_graph(historical_data, start_date, end_date)
+    logger.info(f"Picks Graph updated")
+    
+    points_fig = generate_points_graph(historical_data, start_date, end_date)
+    logger.info(f"Points Graph updated")
+    odds_fig = generate_odds_graph(historical_data, start_date, end_date)
+    logger.info(f"Odds Graph updated")
+    # Fetch the latest data using the get_data function
+    df = get_data(start_date, end_date)
+    df_display = df.drop(columns=['game_id'])
+    matchup_tbl = generate_matchups(df)
 
-def update_table(n, start_date, end_date):
-    # Fetch the latest data
-    try:
-        df = get_data(start_date, end_date)
-        # Remove game_id from the DataFrame for display
-        df_display = df.drop(columns=['game_id'])
-
-        # Read the log file to get historical data and create a mapping
-        historical_data = {}
-
-        with open("data_log.jsonl", "r") as f:
-            for line in f:
-                entry = json.loads(line)
-                data = entry['data']
-                for index, game_id in data['game_id'].items():
-                    if game_id not in historical_data:
-                        historical_data[game_id] = {'Home Win': [], 'Away Win': [], 'points': []}
-
-                    # Append historical values for this game_id
-                    historical_data[game_id]['Home Win'].append(data['Home Win'][index])
-                    historical_data[game_id]['Away Win'].append(data['Away Win'][index])
-                    historical_data[game_id]['points'].append(data['points'][index])
-
+    # Connect to SQLite database to get historical data
+    with sqlite3.connect('data-log.db') as conn:
         # Prepare tooltip data
         tooltip_data = []
         for index, row in df.iterrows():
             game_id = row['game_id']
-            hist_values = historical_data.get(game_id, {})
+            hist_query = f"SELECT * FROM nfl_data WHERE game_id = '{game_id}' ORDER BY datetime DESC"
+            hist_df = pd.read_sql_query(hist_query, conn)
             row_tooltip = {}
-
-            for col in ['Home Win', 'Away Win', 'points']:
+            for col in ['home_win', 'away_win', 'points']:
                 if col in df.columns:
                     current_value = row[col]
-                    history = hist_values.get(col, [])
-                    # Filter to show only distinct changes
+                    history = hist_df[col].tolist()
                     distinct_changes = [str(k) for k, g in groupby(history) if str(k) != str(current_value)]
 
                     row_tooltip[col] = f"{col}: {str(current_value)}"
@@ -91,29 +87,7 @@ def update_table(n, start_date, end_date):
 
             tooltip_data.append(row_tooltip)
 
-        # Update the data and tooltips for the table
-        logger.info("Table updated")
-        return df_display.to_dict('records'), tooltip_data
 
-    except Exception as e:
-        logger.exception("Failed to fetch or parse data in get_data()")
-        return None, None
-
-
-@app.callback(
-    Output('picks-graph', 'figure'),
-    Output('lower-odds-points-graph', 'figure'),
-    Output('odds-graph', 'figure'),
-    Input('interval-component', 'n_intervals'),
-    Input('date-picker-range', 'start_date'),
-    Input('date-picker-range', 'end_date')
-)
-def update_graphs(n, start_date, end_date):
-    historical_data = load_historical_data(start_date, end_date)
-    picks_fig = generate_picks_graph(historical_data, start_date, end_date)
-    logger.info(f"Picks Graph updated")
-    points_fig = generate_points_graph(historical_data, start_date, end_date)
-    logger.info(f"Points Graph updated")
-    odds_fig = generate_odds_graph(historical_data, start_date, end_date)
-    logger.info(f"Odds Graph updated")
-    return picks_fig, points_fig, odds_fig
+    # Update the data and tooltips for the table
+    logger.info("Table updated")
+    return picks_fig, df_display.to_dict('records'), tooltip_data, matchup_tbl, points_fig, odds_fig, 

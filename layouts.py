@@ -79,6 +79,30 @@ table = dbc.Row([
     )
 ], className="data-table")
 
+matchups_table = dbc.Row(
+    dbc.Col(
+        dash_table.DataTable(
+            id='matchups-table',
+            columns=[
+                {"name": "Matchup", "id": "matchup"},
+                {"name": "Time", "id": "time"},
+                {"name": "Projected Winner", "id": "projected_winner"},
+                {"name": "Ranking", "id": "ranking"}
+            ],
+            style_data={
+                'whiteSpace': 'normal',
+                'height': 'auto',
+                'textAlign': 'center'
+            },
+            style_header={
+                'fontWeight': 'bold'
+            },
+            style_table={'overflowX': 'auto'},
+        ),
+    ),
+    className="matchups-table"
+)
+
 points_graph = dbc.Row(dcc.Graph(id='lower-odds-points-graph'),
             justify="center",
             className="line-graph")
@@ -124,7 +148,7 @@ def get_main_layout():
             ], width=4),  # Half width of the row for chat
         ]),
         dbc.Row([
-            table, points_graph, odds_graph
+            table, matchups_table, points_graph, odds_graph
         ]),
         footer
     ])
